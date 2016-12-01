@@ -1,0 +1,62 @@
+#!/bin/env python2
+import sys
+
+class Mount:
+    def __init__(self, mnt_id):
+        self.children = []
+        self.id = mnt_id
+        self.parent = None
+        self.l = "unreachable\n"
+
+if len(sys.argv[1]) < 2:
+    print "lsmnt PATH_TO_MOUNTINFO [DEEP] [START]"
+    sys.exit(1)
+
+f = open(sys.argv[1])
+
+mounts = {}
+
+for l in f:
+    mnt_id, p = l.split()[:2]
+
+    m = None
+    if mnt_id in mounts:
+        m = mounts[mnt_id]
+    else:
+        m = Mount(mnt_id)
+        mounts[mnt_id] = m
+
+    pm = None
+    if p in mounts:
+        pm = mounts[p]
+    else:
+        pm = Mount(p)
+        mounts[p] = pm
+
+    pm.children.append(m)
+    m.parent = pm
+    m.l = l
+
+def print_tree(m, sep, deep):
+    print "   |" * sep, '  \\', m.l,
+    if sep >= deep:
+            return
+    m.children.sort()
+    for c in m.children:
+        print_tree(c, sep + 1, deep)
+
+if len(sys.argv) > 2:
+    deep = int(sys.argv[2])
+else:
+    deep = 1 << 20 # unlimited :)
+if len(sys.argv) > 3:
+    print_tree(mounts[sys.argv[3]], 0, deep)
+    sys.exit(0)
+
+for mnt_id in mounts:
+    m = mounts[mnt_id]
+
+    if m.parent:
+        continue
+
+    print_tree(m, 0, deep)
